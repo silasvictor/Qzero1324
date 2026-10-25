@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String          @id @default(uuid())
+  email        String          @unique
+  passwordHash String
+  role         String          @default("STUDENT") // STUDENT, ADMIN, OPERATOR
+  name         String
+  rollNumber   String?         @unique
+  department   String?
+  phone        String?
+  avatarUrl    String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  studentProfile      StudentProfile?
+  documents           Document[]
+  orders              PrintOrder[]
+  payments            Payment[]
+  notifications       Notification[]
+  supportTickets      SupportTicket[]
+  verificationRecords VerificationRecord[] @relation("OperatorVerifications")
+  auditLogs           AdminAuditLog[]      @relation("AdminLogs")
+}
+
+model StudentProfile {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  universityCardId String?
+  year             String?  @default("3rd Year")
+  balance          Float    @default(250.00) // Campus smart wallet balance in ₹
+  loyaltyPoints    Int      @default(120)
+  defaultDuplex    Boolean  @default(true)
+  defaultColor     Boolean  @default(false)
+  updatedAt        DateTime @updatedAt
+}
+
+model Document {
+  id              String         @id @default(uuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileName        String
+  originalName    String
+  fileSize        Int
+  fileType        String
+  pageCount       Int            @default(1)
+  isColorDetected Boolean        @default(false)
+  fileUrl         String
+  createdAt       DateTime       @default(now())
+
+  printSettings   PrintSetting?
+  orders          PrintOrder[]
+}
+
+model PrintSetting {
+  id                   String    @id @default(uuid())
+  documentId           String    @unique
+  document             Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  colorMode            String    @default("BW") // BW, COLOR
+  duplexMode           String    @default("DOUBLE") // SINGLE, DOUBLE
+  paperSize            String    @default("A4") // A4, A3
+  orientation          String    @default("PORTRAIT") // PORTRAIT, LANDSCAPE
+  pageRange            String    @default("ALL") // ALL, or "1-5", "1,3,5"
+  oddEven              String    @default("ALL") // ALL, ODD, EVEN
+  copies               Int       @default(1)
+  includeTrackingMargin Boolean  @default(true) // Removable tracking margin below dotted line
+  bindingOption        String    @default("NONE") // NONE, CORNER_STAPLE, SPIRAL
+  calculatedPrice      Float     @default(0.0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  orders               PrintOrder[]
+}
+
+model Kiosk {
+  id                  String       @id @default(uuid())
+  name                String
+  campusCode          String       @unique // e.g. "K-CENTRAL", "K-LIB"
+  location            String
+  description         String?
+  latitude            Float
+  longitude           Float
+  status              String       @default("ONLINE") // ONLINE, BUSY, MAINTENANCE, OFFLINE
+  paperLevelPercent   Int          @default(90)
+  tonerLevelPercent   Int          @default(85)
+  queueDepth          Int          @default(0)
+  ppmSpeed            Int          @default(35) // Pages per minute
+  activeQueueCapacity Int          @default(25)
+  operatorName        String?      @default("Campus Fleet Bot")
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  slots               PickupSlot[]
+  orders              PrintOrder[]
+}
+
+model PickupSlot {
+  id         String     @id @default(uuid())
+  kioskId    String
+  kiosk      Kiosk      @relation(fields: [kioskId], references: [id], onDelete: Cascade)
+  startTime  DateTime
+  endTime    DateTime
+  capacity   Int        @default(10)
+  bookedCount Int       @default(0)
+  isAvailable Boolean   @default(true)
+
+  orders     PrintOrder[]
+}
+
+model PrintOrder {
+  id                   String        @id @default(uuid())
+  trackingCode         String        @unique // 8-char format e.g. "8XUI-Z123"
+  userId               String
+  user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentId           String
+  document             Document      @relation(fields: [documentId], references: [id])
+  printSettingsId      String
+  printSettings        PrintSetting  @relation(fields: [printSettingsId], references: [id])
+  kioskId              String
+  kiosk                Kiosk         @relation(fields: [kioskId], references: [id])
+  pickupSlotId         String?
+  pickupSlot           PickupSlot?   @relation(fields: [pickupSlotId], references: [id])
+  printMode            String        @default("SCHEDULED") // INSTANT, SCHEDULED
+  status               String        @default("PENDING_PAYMENT") // PENDING_PAYMENT, CONFIRMED, QUEUED, PRINTING, PACKING, READY_FOR_PICKUP, COLLECTED, CANCELLED, FAILED
+  priorityScore        Float         @default(1.0) // Calculated dynamically from (wi / EPTi) + alpha * Twait
+  estimatedPrintTimeSec Int          @default(45)
+  totalPages           Int           @default(1)
+  amount               Float         @default(0.0)
+  currency             String        @default("INR")
+  pickupWindowStart    DateTime?
+  pickupWindowEnd      DateTime?
+  collectedAt          DateTime?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  payment              Payment?
+  verificationRecord   VerificationRecord?
+}
+
+model Payment {
+  id            String     @id @default(uuid())
+  orderId       String     @unique
+  order         PrintOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount        Float
+  currency      String     @default("INR")
+  method        String     @default("WALLET") // WALLET, RAZORPAY_SANDBOX, UPI_MOCK
+  status        String     @default("SUCCESS") // PENDING, SUCCESS, FAILED
+  transactionId String     @unique
+  receiptNumber String     @unique
+  paidAt        DateTime   @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("INFO") // ORDER_CONFIRMED, PRINTING_STARTED, READY_FOR_PICKUP, PAYMENT_SUCCESS, KIOSK_ALERT, SYSTEM
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+}
+
+model VerificationRecord {
+  id                     String     @id @default(uuid())
+  orderId                String     @unique
+  order                  PrintOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  operatorId             String
+  operator               User       @relation("OperatorVerifications", fields: [operatorId], references: [id])
+  studentRollNoVerified  Boolean    @default(true)
+  cardVerified           Boolean    @default(true)
+  envelopeCodeVerified   Boolean    @default(true)
+  otpVerified            Boolean    @default(false)
+  verificationNotes      String?
+  verifiedAt             DateTime   @default(now())
+}
+
+model SupportTicket {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderId       String?
+  category      String   @default("GENERAL") // PRINT_QUALITY, MISSING_PAGES, PAYMENT_ISSUE, KIOSK_PROBLEM, REFUND_REQUEST, GENERAL
+  subject       String
+  description   String
+  status        String   @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  adminResponse String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model AdminAuditLog {
+  id         String   @id @default(uuid())
+  adminId    String
+  admin      User     @relation("AdminLogs", fields: [adminId], references: [id])
+  action     String   // STATUS_CHANGE, KIOSK_REASSIGNMENT, REFUND_ISSUED, CAPACITY_UPDATE
+  targetType String   // ORDER, KIOSK, USER, TICKET
+  targetId   String
+  details    String?
+  ipAddress  String?  @default("127.0.0.1")
+  createdAt  DateTime @default(now())
+}

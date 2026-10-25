@@ -1,0 +1,15 @@
+{
+  "name": "queuezero-platform",
+  "version": "1.0.0",
+  "description": "QueueZero (Q-Zero) Complete Full-Stack Smart Campus Printing Platform",
+  "scripts": {
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "db:setup": "cd backend && npx prisma db push && npm run prisma:seed",
+    "test:e2e": "cd backend && npx tsx src/e2e-test.ts",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "cd backend && npm run build && cd ../frontend && npm run build"
+  },
+  "keywords": ["smart-campus", "printing", "queue-zero", "hackathon-2026", "react", "nodejs", "prisma"],
+  "author": "Antigravity Senior Engineering Team"
+}
