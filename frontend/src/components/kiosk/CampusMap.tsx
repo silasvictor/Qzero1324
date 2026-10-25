@@ -101,7 +101,7 @@ export const CampusMap: React.FC<CampusMapProps> = ({
 
                   <div className="inline-flex items-center gap-1 text-[9px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 mb-1.5">
                     <span>🏢</span>
-                    <span>Inside Building • Indoor Kiosk</span>
+                    <span>Near Central Block (CB)</span>
                   </div>
 
                   <div className="text-[10px] text-gray-500 mb-2 leading-tight">{kiosk.location}</div>

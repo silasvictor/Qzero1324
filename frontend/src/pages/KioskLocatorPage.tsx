@@ -122,7 +122,7 @@ export const KioskLocatorPage: React.FC = () => {
                       {selectedKiosk.campusCode}
                     </span>
                     <span className="text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                      🏢 Inside Building
+                      Near CB
                     </span>
                   </div>
                   <h3 className="font-bold text-lg text-brand-dark mt-1">{selectedKiosk.name}</h3>
@@ -240,7 +240,7 @@ export const KioskLocatorPage: React.FC = () => {
                           {k.campusCode}
                         </span>
                         <span className="text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5">
-                          🏢 Inside Building
+                          Near CB
                         </span>
                         <h4 className="font-bold text-sm text-brand-dark">{k.name}</h4>
                       </div>
